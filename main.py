@@ -1,20 +1,26 @@
+import os
 import streamlit as st
-from io import StringIO
-from pdfminer.converter import TextConverter
-from pdfminer.layout import LAParams
-from pdfminer.pdfdocument import PDFDocument
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-from pdfminer.pdfpage import PDFPage
-from pdfminer.pdfparser import PDFParser
+# from io import StringIO
+# from pdfminer.converter import TextConverter
+# from pdfminer.layout import LAParams
+# from pdfminer.pdfdocument import PDFDocument
+# from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+# from pdfminer.pdfpage import PDFPage
+# from pdfminer.pdfparser import PDFParser
 from sqlalchemy.orm import sessionmaker
-from files import FILE
+from files import UserInput
 from sqlalchemy import create_engine
 
+#connecting database
 engine=create_engine('sqlite:///file_db.sqlite3')
 Session=sessionmaker(bind=engine)
 sess=Session()
 
-
+#save the files given by user at 'UploadedFiles' folder
+def save_uploaded_doc(uploadedDoc):
+    with open (os.path.join('UploadedFiles',uploadedDoc.name),'wb')as f:
+        f.write(uploadedDoc.getbuffer())
+    return True 
 
 st.set_page_config(
     page_title="PDF Analyzer",
@@ -22,49 +28,35 @@ st.set_page_config(
     initial_sidebar_state='collapsed'
 )
 
-def extract_text(doc):
-
-    output_string = StringIO()
-    with open(doc, 'rb') as in_file:
-        parser = PDFParser(in_file)
-        doc = PDFDocument(parser)
-        rsrcmgr = PDFResourceManager()
-        device = TextConverter(rsrcmgr, output_string, laparams=LAParams())
-        interpreter = PDFPageInterpreter(rsrcmgr, device)
-        for page in PDFPage.create_pages(doc):
-            interpreter.process_page(page)
-
-    return output_string
 
 st.sidebar.title("PDF Analyser")
 menu_options=['Upload PDF files','View Uploaded file']
 menu_choice = st.sidebar.radio("select an option",menu_options)
 
 if menu_choice == menu_options[0]:
-    
     st.header("📄 Upload PDF files")
-    data = st.file_uploader("upload a pdf")
-    
+    doc=st.file_uploader("upload a pdf", type=['pdf'])
     submit=st.button("UPLOAD")
 
 
-    if data and submit:
+    if submit and doc is not None:
+        doc_name=doc.name
+        doc_size=doc.size
+        if save_uploaded_doc(doc):
+            path = f'C:\\Users\\AICT\\Documents\\pdf analyzer\\UploadedFiles\\{doc_name}' 
         try:
-            # data=FILE(file_name=data)
-            # sess.add(data)
-            # sess.commit()
-            st.write("We got the File")
+            upload=UserInput(name=doc_name, size=doc_size, location=path)
+            sess.add(upload)
+            sess.commit()
+            st.success("We got the File")
             
 
-        except:
-            st.write("There was an error")
-        
-        out=extract_text(data)
-        val= data.getvalue()
-        st.write(val)
+        except Exception as e:
+            st.error(f"Error has occured : {e}")
 
 if menu_choice == menu_options[1]:
 
     st.header("👁 View PDF files")
-    
+def allowed_files(filename):
+    return'.' in filename and filename.rsplit('.',1)[1].lower()in {"pdf"}    
 
