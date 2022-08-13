@@ -1,15 +1,32 @@
 import os
 import streamlit as st
-# from io import StringIO
-# from pdfminer.converter import TextConverter
-# from pdfminer.layout import LAParams
-# from pdfminer.pdfdocument import PDFDocument
-# from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-# from pdfminer.pdfpage import PDFPage
-# from pdfminer.pdfparser import PDFParser
 from sqlalchemy.orm import sessionmaker
 from files import UserInput
 from sqlalchemy import create_engine
+
+#new
+from io import StringIO
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFParser
+
+#new
+def text_extract(docName):
+    out= StringIO()
+
+    with open (f'D:\Tasks\PDF_Analyzer\static\{docName}','rb') as in_file:
+        parser = PDFParser(in_file)
+        doc = PDFDocument(parser)
+        rmanager=PDFResourceManager()
+        device = TextConverter(rmanager, out, laparams=LAParams())
+        interperter= PDFPageInterpreter(rmanager, device)
+        for page in PDFPage.create_pages(doc):
+            interperter.process_page(page)
+
+    return out.getvalue()
 
 #connecting database
 engine=create_engine('sqlite:///file_db.sqlite3')
@@ -57,6 +74,10 @@ if menu_choice == menu_options[0]:
 if menu_choice == menu_options[1]:
 
     st.header("👁 View PDF files")
-def allowed_files(filename):
-    return'.' in filename and filename.rsplit('.',1)[1].lower()in {"pdf"}    
+    #new    
+    if view:
+        results=sess.query(UserInput).all()
+        last_name= str(results[-1].name )
+        output= text_extract(last_name)
+        st.write(output)
 
